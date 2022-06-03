@@ -37,7 +37,7 @@ func (p *packetData) decode(conn *Conn) (pk packet.Packet, err error) {
 	if !ok {
 		// No packet with the ID. This may be a custom packet of some sorts.
 		pk = &packet.Unknown{PacketID: p.h.PacketID}
-	}else{
+	} else {
 		pk = pkFunc()
 	}
 

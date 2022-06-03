@@ -546,8 +546,8 @@ func (uq *UQHolder) Update(pk packet.Packet) {
 	// no need to support
 	case *packet.PlayStatus:
 	// no need to support
-	case *packet.PyRpc:
-	//not handled
+	//case *packet.PyRpc:
+	// No such packet type in global MC:BE
 	default:
 		if !uq.displayUnknownPackets {
 			break

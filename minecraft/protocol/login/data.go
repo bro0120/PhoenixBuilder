@@ -25,13 +25,6 @@ type IdentityData struct {
 	// DisplayName is the username of the player, which may be changed by the user. It should for that reason
 	// not be used as a key to store information.
 	DisplayName string `json:"displayName"`
-	NeteaseSid string `json:"netease_sid"`
-	Uid int64 `json:"uid"`
-	Version int64 `json:"version"`
-	Env string `json:"env"`
-	Platform string `json:"platform"`
-	EngineVersion string `json:"engineVersion"`
-	PatchVersion string `json:"patchVersion"`
 	// TitleID is a numerical ID present only if the user is logged into XBL. It holds the title ID (XBL
 	// related) of the version that the player is on. Some of these IDs may be found below.
 	// Win10: 896928775
@@ -52,7 +45,7 @@ func (data IdentityData) Validate() error {
 	if _, err := strconv.ParseInt(data.XUID, 10, 64); err != nil && len(data.XUID) != 0 {
 		return fmt.Errorf("XUID must be parseable as an int64, but got %v", data.XUID)
 	}
-	if _, err := uuid.Parse(data.Identity); err != nil {
+	if id, err := uuid.Parse(data.Identity); err != nil || id == uuid.Nil {
 		return fmt.Errorf("UUID must be parseable as a valid UUID, but got %v", data.Identity)
 	}
 	if len(data.DisplayName) == 0 || len(data.DisplayName) > 15 {
@@ -142,10 +135,11 @@ type ClientData struct {
 	// SkinGeometry is a base64 JSON encoded structure of the geometry data of a skin, containing properties
 	// such as bones, uv, pivot etc.
 	SkinGeometry string `json:"SkinGeometryData"`
+	// SkinGeometryVersion is the version for SkinGeometry.
+	SkinGeometryVersion string `json:"SkinGeometryDataEngineVersion"`
 	// SkinID is a unique ID produced for the skin, for example 'c18e65aa-7b21-4637-9b63-8ad63622ef01_Alex'
 	// for the default Alex skin.
 	SkinID string `json:"SkinId"`
-	SkinIID string
 	// PlayFabID is the PlayFab ID produced for the player's skin. PlayFab is the company that hosts the
 	// Marketplace, skins and other related features from the game. This ID is the ID of the skin used to
 	// store the skin inside of PlayFab.
@@ -309,7 +303,7 @@ func (data ClientData) Validate() error {
 	if geomData, err := base64.StdEncoding.DecodeString(data.SkinGeometry); err != nil {
 		return fmt.Errorf("SkinGeometry was not a valid base64 string: %v", err)
 	} else if len(geomData) != 0 {
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		if err := json.Unmarshal(geomData, &m); err != nil {
 			return fmt.Errorf("SkinGeometry base64 decoded was not a valid JSON string: %v", err)
 		}
@@ -318,7 +312,7 @@ func (data ClientData) Validate() error {
 	if err != nil {
 		return fmt.Errorf("SkinResourcePatch was not a valid base64 string: %v", err)
 	}
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	if err := json.Unmarshal(b, &m); err != nil {
 		return fmt.Errorf("SkinResourcePatch base64 decoded was not a valid JSON string: %v", err)
 	}

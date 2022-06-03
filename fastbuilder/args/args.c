@@ -4,24 +4,17 @@
 #include <string.h>
 
 char args_isDebugMode=0;
-char args_disableHashCheck=0;
-char replaced_auth_server=0;
-char *newAuthServer;
-char args_muteWorldChat=0;
-char args_noPyRpc=0;
 char use_startup_script=0;
 char *startup_script;
-char specified_server=0;
-char *server_code;
-char *server_password="";
-char custom_token=0;
-char *token_content;
+char *server_address="";
 char *externalListenAddr="";
 char *capture_output_file="";
 char args_no_readline=0;
 char *pack_scripts="";
 char *pack_scripts_out="";
 char enable_omega_system=0;
+char *gamename="";
+char ingame_response=1;
 
 extern void custom_script_engine_const(const char *key, const char *val);
 extern void do_suppress_se_const(const char *key);
@@ -29,24 +22,19 @@ extern void do_suppress_se_const(const char *key);
 void print_help(const char *self_name) {
 	printf("%s [options]\n",self_name);
 	printf("\t--debug: Run in debug mode.\n");
-	printf("\t-A <url>, --auth-server=<url>: Use the specified authentication server, instead of the default one.\n");
-	printf("\t--no-update-check: Suppress update notifications.\n");
-	printf("\t-M, --no-world-chat: Ignore world chat on client side.\n");
-	printf("\t--no-pyrpc: Disable the PyRpcPacket interaction, the client's commands will be prevented from execution by netease's rental server.\n");
 #ifdef WITH_V8
 	printf("\t-S, --script=<*.js>: run a .js script at start\n");
 	printf("\t--script-engine-const key=value: Define a const value for script engine's \"consts\" const. Can be used to replace the default value. Specify multiple items by using this argument for multiple times.\n");
 	printf("\t--script-engine-suppress-const <key>: Undefine a const value for script engine's \"consts\" const. Specify multiple items by using this argument for multiple times.\n");
 #endif
-	printf("\t-c, --code=<server code>: Specify a server code.\n");
-	printf("\t-p, --password=<server password>: Specify the password of the server specified by -c.\n");
-	printf("\t-t, --token=<path of FBToken>: Specify the path of FBToken, and quit if the file is unaccessible.\n");
-	printf("\t-T, --plain-token=<token>: Specify the token content.\n");
+	printf("\t-s, --server=<server address>: Specify a server address. Note that only offline mode is supported currently.\n");
 	printf("\t-E, --listen-external: Listen on the specified address and wait for external controlling connection.\n\t\tExample: -E 0.0.0.0:5768 - listen on port 5768 and accept connections from anywhere,\n\t\t\t-E 127.0.0.1:5769 - listen on port 5769 and accept connections from localhost only.\n");
 	printf("\t--capture=<*.bin>: Capture minecraft packet and dump to target file\n");
 	printf("\t--no-readline: Suppress user input.\n");
 	printf("\t--pack-scripts <manifest path>: Create a script package.\n");
 	printf("\t--pack-scripts-to <path>: Specify the path for the output script package.\n");
+	printf("\t-N, --operator_name <name>: Specify the operator's name to give response. Use @ for all possible users.\n");
+	printf("\t-X, --no-ingame-response: Disable ingame response.\n");
 	printf("\n");
 	printf("\t-O, --omega_system: Enable Omega System.\n");
 	printf("\n");
@@ -80,7 +68,7 @@ void print_version(int detailed) {
 		printf(FB_VERSION "\n");
 		return;
 	}
-	printf("PhoenixBuilder " FB_VERSION "\n");
+	printf("PhoenixBuilder ~ global-bedrock/v1.19.0 " FB_VERSION "\n");
 #ifdef FBGUI_VERSION
 	printf("With GUI " FBGUI_VERSION "\n");
 #endif
@@ -88,23 +76,13 @@ void print_version(int detailed) {
 	printf("With V8 linked.\n");
 #endif
 	printf("COMMIT " FB_COMMIT_LONG "\n");
-	printf("Copyright (C) 2022 Bouldev\n");
+	printf("Bouldev\n");
+	printf("Licensed under GNU AGPL v3.\n");
 	printf("\n");
 }
 
 void read_token(char *token_path) {
-	FILE *file=fopen(token_path,"rb");
-	if(!file) {
-		fprintf(stderr, "Failed to read token at %s.\n",token_path);
-		exit(21);
-	}
-	fseek(file,0,SEEK_END);
-	size_t flen=ftell(file);
-	fseek(file,0,SEEK_SET);
-	token_content=malloc(flen+1);
-	token_content[flen]=0;
-	fread(token_content, 1, flen, file);
-	fclose(file);
+	fprintf(stderr, "read_token called with argument token_path: %s\n", token_path);
 }
 
 void quickcopy(char **target_ptr) {
@@ -126,7 +104,7 @@ int _parse_args(int argc, char **argv) {
 			{"script", required_argument, 0, 'S'}, //7
 			{"version", no_argument, 0, 'v'}, //8
 			{"version-plain", no_argument, 0, 0}, //9
-			{"code", required_argument, 0, 'c'}, //10
+			{"server", required_argument, 0, 's'}, //10
 			{"password", required_argument, 0, 'p'}, //11
 			{"token", required_argument, 0, 't'}, //12
 			{"plain-token", required_argument, 0, 'T'}, //13
@@ -137,11 +115,13 @@ int _parse_args(int argc, char **argv) {
 			{"pack-scripts", required_argument, 0, 0}, //18
 			{"pack-scripts-to", required_argument, 0, 0}, //19
 			{"capture", required_argument, 0, 0}, // 20
-			{"omega_system", no_argument, 0, 'O'}, //21
+			{"omega_system", no_argument, 0, 'O'}, // 21
+			{"operator_name", required_argument, 0, 'N'}, // 22
+			{"no-ingame-response", no_argument, 0, 'X'}, // 23
 			{0, 0, 0, 0}
 		};
 		int option_index;
-		int c=getopt_long(argc,argv,"hA:MvS:c:p:t:T:O", opts, &option_index);
+		int c=getopt_long(argc,argv,"hA:MvS:s:p:t:T:ON:", opts, &option_index);
 		if(c==-1)
 			break;
 		switch(c) {
@@ -151,10 +131,10 @@ int _parse_args(int argc, char **argv) {
 				args_isDebugMode=1;
 				break;
 			case 3:
-				args_disableHashCheck=1;
+				fprintf(stderr, "WARNING: --no-update-check option isn't available.\n");
 				break;
 			case 5:
-				args_noPyRpc=1;
+				fprintf(stderr, "WARNING: --no-pyrpc option isn't available.\n");
 				break;
 			case 6:
 				fprintf(stderr, "--no-nbt option is no longer available.\n");
@@ -209,11 +189,10 @@ int _parse_args(int argc, char **argv) {
 			print_help(argv[0]);
 			return 0;
 		case 'A':
-			replaced_auth_server=1;
-			quickcopy(&newAuthServer);
+			fprintf(stderr, "WARNING: -A option isn't available\n");
 			break;
 		case 'M':
-			args_muteWorldChat=1;
+			fprintf(stderr, "WARNING: -M option isn't available\n");
 			break;
 		case 'S':
 #ifndef WITH_V8
@@ -223,21 +202,11 @@ int _parse_args(int argc, char **argv) {
 			use_startup_script=1;
 			quickcopy(&startup_script);
 			break;
-		case 'c':
-			specified_server=1;
-			quickcopy(&server_code);
+		case 's':
+			quickcopy(&server_address);
 			break;
 		case 'p':
-			specified_server=1;
-			quickcopy(&server_password);
-			break;
-		case 't':
-			custom_token=1;
-			read_token(optarg);
-			break;
-		case 'T':
-			custom_token=1;
-			quickcopy(&token_content);
+			fprintf(stderr, "WARNING: -p, --password option isn't available.\n");
 			break;
 		case 'E':
 			quickcopy(&externalListenAddr);
@@ -246,8 +215,14 @@ int _parse_args(int argc, char **argv) {
 			print_version(1);
 			return 0;
 		case 'O':
-		    enable_omega_system=1;
-		    break;
+			enable_omega_system=1;
+			break;
+		case 'N':
+			quickcopy(&gamename);
+			break;
+		case 'X':
+			ingame_response=0;
+			break;
 		default:
 			print_help(argv[0]);
 			return 1;

@@ -11,12 +11,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"time"
-	_ "embed"
-	//"strings"
 )
-
-//go:embed skindump.json
-var claimData string
 
 // chain holds a chain with claims, each with their own headers, payloads and signatures. Each claim holds
 // a public key used to verify other claims.
@@ -81,7 +76,7 @@ func Parse(request []byte) (IdentityData, ClientData, AuthResult, error) {
 
 	var identityClaims identityClaims
 	var authenticated bool
-	t, iss := time.Now(), "NetEase"
+	t, iss := time.Now(), "Mojang"
 
 	switch len(req.Chain) {
 	case 1:
@@ -102,7 +97,7 @@ func Parse(request []byte) (IdentityData, ClientData, AuthResult, error) {
 		if err := c.Validate(jwt.Expected{Time: t}); err != nil {
 			return iData, cData, res, fmt.Errorf("validate token 0: %w", err)
 		}
-		authenticated = true//bytes.Equal(key.X.Bytes(), mojangKey.X.Bytes()) && bytes.Equal(key.Y.Bytes(), mojangKey.Y.Bytes())
+		authenticated = bytes.Equal(key.X.Bytes(), mojangKey.X.Bytes()) && bytes.Equal(key.Y.Bytes(), mojangKey.Y.Bytes())
 
 		if err := parseFullClaim(req.Chain[1], key, &c); err != nil {
 			return iData, cData, res, fmt.Errorf("parse token 1: %w", err)
@@ -154,12 +149,12 @@ func parseLoginRequest(requestData []byte) (*request, error) {
 // parseFullClaim parses and verifies a full claim using the ecdsa.PublicKey passed. The key passed is updated
 // if the claim holds an identityPublicKey field.
 // The value v passed is decoded into when reading the claims.
-func parseFullClaim(claim string, key *ecdsa.PublicKey, v interface{}) error {
+func parseFullClaim(claim string, key *ecdsa.PublicKey, v any) error {
 	tok, err := jwt.ParseSigned(claim)
 	if err != nil {
 		return fmt.Errorf("error parsing signed token: %w", err)
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := tok.Claims(key, v, &m); err != nil {
 		return fmt.Errorf("error verifying claims of token: %w", err)
 	}
@@ -174,7 +169,7 @@ func parseFullClaim(claim string, key *ecdsa.PublicKey, v interface{}) error {
 
 // parseAsKey parses the base64 encoded ecdsa.PublicKey held in k as a public key and sets it to the variable
 // pub passed.
-func parseAsKey(k interface{}, pub *ecdsa.PublicKey) error {
+func parseAsKey(k any, pub *ecdsa.PublicKey) error {
 	kStr, _ := k.(string)
 	if err := ParsePublicKey(kStr, pub); err != nil {
 		return fmt.Errorf("error parsing public key: %w", err)
@@ -203,7 +198,7 @@ func Encode(loginChain string, data ClientData, key *ecdsa.PrivateKey) []byte {
 	}
 
 	signer, _ := jose.NewSigner(jose.SigningKey{Key: key, Algorithm: jose.ES384}, &jose.SignerOptions{
-		ExtraHeaders: map[jose.HeaderKey]interface{}{"x5u": keyData},
+		ExtraHeaders: map[jose.HeaderKey]any{"x5u": keyData},
 	})
 	firstJWT, _ := jwt.Signed(signer).Claims(identityPublicKeyClaims{
 		Claims:               claims,
@@ -215,10 +210,6 @@ func Encode(loginChain string, data ClientData, key *ecdsa.PrivateKey) []byte {
 	request.Chain = append(chain{firstJWT}, request.Chain...)
 	// We create another token this time, which is signed the same as the claim we just inserted in the chain,
 	// just now it contains client data.
-	//data=claimData
-	//var outmap map[string]interface{}
-	//str:=strings.Replace(claimData,"Ni3rtfss",data.ThirdPartyName,-1)
-	//json.Unmarshal([]byte(str),&outmap)
 	request.RawToken, _ = jwt.Signed(signer).Claims(data).CompactSerialize()
 
 	return encodeRequest(request)
@@ -250,7 +241,7 @@ func EncodeOffline(identityData IdentityData, data ClientData, key *ecdsa.Privat
 	}
 
 	signer, _ := jose.NewSigner(jose.SigningKey{Key: key, Algorithm: jose.ES384}, &jose.SignerOptions{
-		ExtraHeaders: map[jose.HeaderKey]interface{}{"x5u": keyData},
+		ExtraHeaders: map[jose.HeaderKey]any{"x5u": keyData},
 	})
 	firstJWT, _ := jwt.Signed(signer).Claims(identityClaims{
 		Claims:            claims,

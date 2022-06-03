@@ -9,7 +9,6 @@ import (
 	"phoenixbuilder/minecraft/nbt"
 	"image/color"
 	"io"
-	"io/ioutil"
 	"math"
 	"unsafe"
 )
@@ -40,6 +39,13 @@ func (r *Reader) Uint8(x *uint8) {
 	if err != nil {
 		r.panic(err)
 	}
+}
+
+// Int8 reads an int8 from the underlying buffer.
+func (r *Reader) Int8(x *int8) {
+	var b uint8
+	r.Uint8(&b)
+	*x = int8(b)
 }
 
 // Bool reads a bool from the underlying buffer.
@@ -128,6 +134,19 @@ func (r *Reader) UBlockPos(x *BlockPos) {
 	r.Varint32(&x[2])
 }
 
+// ChunkPos writes a ChunkPos as 2 varint32s to the underlying buffer.
+func (r *Reader) ChunkPos(x *ChunkPos) {
+	r.Varint32(&x[0])
+	r.Varint32(&x[1])
+}
+
+// SubChunkPos writes a SubChunkPos as 3 varint32s to the underlying buffer.
+func (r *Reader) SubChunkPos(x *SubChunkPos) {
+	r.Varint32(&x[0])
+	r.Varint32(&x[1])
+	r.Varint32(&x[2])
+}
+
 // ByteFloat reads a rotational float32 from a single byte.
 func (r *Reader) ByteFloat(x *float32) {
 	var v uint8
@@ -150,21 +169,21 @@ func (r *Reader) VarRGBA(x *color.RGBA) {
 // Bytes reads the leftover bytes into a byte slice.
 func (r *Reader) Bytes(p *[]byte) {
 	var err error
-	*p, err = ioutil.ReadAll(r.r)
+	*p, err = io.ReadAll(r.r)
 	if err != nil {
 		r.panic(err)
 	}
 }
 
 // NBT reads a compound tag into a map from the underlying buffer.
-func (r *Reader) NBT(m *map[string]interface{}, encoding nbt.Encoding) {
+func (r *Reader) NBT(m *map[string]any, encoding nbt.Encoding) {
 	if err := nbt.NewDecoderWithEncoding(r.r, encoding).Decode(m); err != nil {
 		r.panic(err)
 	}
 }
 
 // NBTList reads a list of NBT tags from the underlying buffer.
-func (r *Reader) NBTList(m *[]interface{}, encoding nbt.Encoding) {
+func (r *Reader) NBTList(m *[]any, encoding nbt.Encoding) {
 	if err := nbt.NewDecoderWithEncoding(r.r, encoding).Decode(m); err != nil {
 		r.panic(err)
 	}
@@ -187,9 +206,42 @@ func (r *Reader) UUID(x *uuid.UUID) {
 	*x = arr
 }
 
+// PlayerInventoryAction reads a PlayerInventoryAction.
+func (r *Reader) PlayerInventoryAction(x *UseItemTransactionData) {
+	r.Varint32(&x.LegacyRequestID)
+	if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
+		var l uint32
+		r.Varuint32(&l)
+
+		x.LegacySetItemSlots = make([]LegacySetItemSlot, l)
+
+		for _, slot := range x.LegacySetItemSlots {
+			SetItemSlot(r, &slot)
+		}
+	}
+
+	var l uint32
+	r.Varuint32(&l)
+
+	x.Actions = make([]InventoryAction, l)
+
+	for _, a := range x.Actions {
+		InvAction(r, &a)
+	}
+
+	r.Varuint32(&x.ActionType)
+	r.BlockPos(&x.BlockPosition)
+	r.Varint32(&x.BlockFace)
+	r.Varint32(&x.HotBarSlot)
+	r.ItemInstance(&x.HeldItem)
+	r.Vec3(&x.Position)
+	r.Vec3(&x.ClickedPosition)
+	r.Varuint32(&x.BlockRuntimeID)
+}
+
 // EntityMetadata reads an entity metadata map from the underlying buffer into map x.
-func (r *Reader) EntityMetadata(x *map[uint32]interface{}) {
-	*x = map[uint32]interface{}{}
+func (r *Reader) EntityMetadata(x *map[uint32]any) {
+	*x = map[uint32]any{}
 
 	var count uint32
 	r.Varuint32(&count)
@@ -220,7 +272,7 @@ func (r *Reader) EntityMetadata(x *map[uint32]interface{}) {
 			r.String(&v)
 			(*x)[key] = v
 		case EntityDataCompoundTag:
-			var v map[string]interface{}
+			var v map[string]any
 			r.NBT(&v, nbt.NetworkLittleEndian)
 			(*x)[key] = v
 		case EntityDataBlockPos:
@@ -244,7 +296,7 @@ func (r *Reader) EntityMetadata(x *map[uint32]interface{}) {
 // ItemInstance reads an ItemInstance x to the underlying buffer.
 func (r *Reader) ItemInstance(i *ItemInstance) {
 	x := &i.Stack
-	x.NBTData = make(map[string]interface{})
+	x.NBTData = make(map[string]any)
 	r.Varint32(&x.NetworkID)
 	if x.NetworkID == 0 {
 		// The item was air, so there is no more data we should read for the item instance. After all, air
@@ -314,7 +366,7 @@ func (r *Reader) ItemInstance(i *ItemInstance) {
 
 // Item reads an ItemStack x from the underlying buffer.
 func (r *Reader) Item(x *ItemStack) {
-	x.NBTData = make(map[string]interface{})
+	x.NBTData = make(map[string]any)
 	r.Varint32(&x.NetworkID)
 	if x.NetworkID == 0 {
 		// The item was air, so there is no more data we should read for the item instance. After all, air
@@ -374,6 +426,26 @@ func (r *Reader) Item(x *ItemStack) {
 	}
 }
 
+// MaterialReducer writes a material reducer to the writer.
+func (r *Reader) MaterialReducer(m *MaterialReducer) {
+	var mix int32
+	var itemCountsLen uint32
+
+	r.Varint32(&mix)
+	r.Varuint32(&itemCountsLen)
+
+	m.InputItem = ItemType{NetworkID: mix << 16, MetadataValue: uint32(mix & 0x7fff)}
+
+	for i := uint32(0); i < itemCountsLen; i++ {
+		var out MaterialReducerOutput
+
+		r.Varint32(&out.NetworkID)
+		r.Varint32(&out.Count)
+
+		m.Outputs = append(m.Outputs, out)
+	}
+}
+
 // LimitUint32 checks if the value passed is lower than the limit passed. If not, the Reader panics.
 func (r *Reader) LimitUint32(value uint32, max uint32) {
 	if max == math.MaxUint32 {
@@ -396,12 +468,12 @@ func (r *Reader) LimitInt32(value int32, min, max int32) {
 }
 
 // UnknownEnumOption panics with an unknown enum option error.
-func (r *Reader) UnknownEnumOption(value interface{}, enum string) {
+func (r *Reader) UnknownEnumOption(value any, enum string) {
 	r.panicf("unknown value '%v' for enum type '%v'", value, enum)
 }
 
 // InvalidValue panics with an error indicating that the value passed is not valid for a specific field.
-func (r *Reader) InvalidValue(value interface{}, forField, reason string) {
+func (r *Reader) InvalidValue(value any, forField, reason string) {
 	r.panicf("invalid value '%v' for %v: %v", value, forField, reason)
 }
 
@@ -488,7 +560,7 @@ func (r *Reader) Varuint32(x *uint32) {
 }
 
 // panicf panics with the format and values passed and assigns the error created to the Reader.
-func (r *Reader) panicf(format string, a ...interface{}) {
+func (r *Reader) panicf(format string, a ...any) {
 	panic(fmt.Errorf(format, a...))
 }
 

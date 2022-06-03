@@ -1,24 +1,22 @@
 package minecraft
 
 import (
-	"phoenixbuilder/bridge/bridge_fmt"
-	fbauth "phoenixbuilder/fastbuilder/cv4/auth"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
-	"path/filepath"
 	"encoding/base64"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/sandertv/go-raknet"
 	"phoenixbuilder/minecraft/internal/resource"
-	//"phoenixbuilder/minecraft/auth"
+	"phoenixbuilder/minecraft/auth"
 	"phoenixbuilder/minecraft/protocol"
 	"phoenixbuilder/minecraft/protocol/login"
 	"phoenixbuilder/minecraft/protocol/packet"
-	"io/ioutil"
+	"golang.org/x/oauth2"
+	"io"
 	"log"
 	rand2 "math/rand"
 	"net"
@@ -44,12 +42,12 @@ type Dialer struct {
 	// object provided here is used, or a default one if left empty.
 	IdentityData login.IdentityData
 
-	// FBUC Token
-	Token string
-	// FBUC Auth Client
-	Client *fbauth.Client
-	ServerCode string
-	Password string
+	// TokenSource is the source for Microsoft Live Connect tokens. If set to a non-nil oauth2.TokenSource,
+	// this field is used to obtain tokens which in turn are used to authenticate to XBOX Live.
+	// The minecraft/auth package provides an oauth2.TokenSource implementation (auth.tokenSource) to use
+	// device auth to login.
+	// If TokenSource is nil, the connection will not use authentication.
+	TokenSource oauth2.TokenSource
 
 	// PacketFunc is called whenever a packet is read from or written to the connection returned when using
 	// Dialer.Dial(). It includes packets that are otherwise covered in the connection sequence, such as the
@@ -61,6 +59,12 @@ type Dialer struct {
 	// server will send chunks as blobs, which may be saved by the client so that chunks don't have to be
 	// transmitted every time, resulting in less network transmission.
 	EnableClientCache bool
+
+	// KeepXBLIdentityData, if set to true, enables passing XUID and title ID to the target server
+	// if the authentication token is not set. This is technically not valid and some servers might kick
+	// the client when an XUID is present without logging in.
+	// For getting this to work with BDS, authentication should be disabled.
+	KeepXBLIdentityData bool
 }
 
 // Dial dials a Minecraft connection to the address passed over the network passed. The network is typically
@@ -94,7 +98,7 @@ func DialContext(ctx context.Context, network, address string) (*Conn, error) {
 // Dial dials a Minecraft connection to the address passed over the network passed. The network is typically
 // "raknet". A Conn is returned which may be used to receive packets from and send packets to.
 func (d Dialer) Dial(network, address string) (*Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30*2*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	return d.DialContext(ctx, network, address)
 }
@@ -115,28 +119,11 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (conn 
 	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 
 	var chainData string
-	if d.ServerCode != "" {
-		data, _ := x509.MarshalPKIXPublicKey(&key.PublicKey)
-		pubKeyData := base64.StdEncoding.EncodeToString(data)
-		chainAddr, code, err := d.Client.Auth(d.ServerCode, d.Password, pubKeyData, d.Token)
-		chainAndAddr := strings.Split(chainAddr,"|")
-		//bridge_fmt.Printf("Auth pass\n")
+	if d.TokenSource != nil {
+		chainData, err = authChain(ctx, d.TokenSource, key)
 		if err != nil {
-			if (code == -3) {
-				homedir, err := os.UserHomeDir()
-				if err != nil {
-					bridge_fmt.Println("WARNING - Failed to obtain the user's home directory. made homedir=\".\";")
-					homedir="."
-				}
-				fbconfigdir := filepath.Join(homedir, ".config/fastbuilder")
-				os.MkdirAll(fbconfigdir, 0755)
-				token := filepath.Join(fbconfigdir,"fbtoken")
-				os.Remove(token)
-			}
-			return nil, err
+			return nil, &net.OpError{Op: "dial", Net: "minecraft", Err: err}
 		}
-		chainData = chainAndAddr[0]
-		address = chainAndAddr[1]
 	}
 	if d.ErrorLog == nil {
 		d.ErrorLog = log.New(os.Stderr, "", log.LstdFlags)
@@ -146,7 +133,7 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (conn 
 	switch network {
 	case "raknet":
 		// If the network is specifically 'raknet', we use the raknet library to dial a RakNet connection.
-		dialer := raknet.Dialer{ErrorLog: log.New(ioutil.Discard, "", 0)}
+		dialer := raknet.Dialer{ErrorLog: log.New(io.Discard, "", 0)}
 		var pong []byte
 		pong, err = dialer.PingContext(ctx, address)
 		if err != nil {
@@ -175,13 +162,15 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (conn 
 	defaultIdentityData(&conn.identityData)
 
 	var request []byte
-	/*if d.TokenSource == nil {
+	if d.TokenSource == nil {
 		// We haven't logged into the user's XBL account. We create a login request with only one token
 		// holding the identity data set in the Dialer after making sure we clear data from the identity data
 		// that is only present when logged in.
-		clearXBLIdentityData(&conn.identityData)
+		if !d.KeepXBLIdentityData {
+			clearXBLIdentityData(&conn.identityData)
+		}
 		request = login.EncodeOffline(conn.identityData, conn.clientData, key)
-	} else {*/
+	} else {
 		// We login as an Android device and this will show up in the 'titleId' field in the JWT chain, which
 		// we can't edit. We just enforce Android data for logging in.
 		setAndroidData(&conn.clientData)
@@ -191,7 +180,7 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (conn 
 		// If we got the identity data from Minecraft auth, we need to make sure we set it in the Conn too, as
 		// we are not aware of the identity data ourselves yet.
 		conn.identityData = identityData
-	//}
+	}
 	c := make(chan struct{})
 	go listenConn(conn, d.ErrorLog, c)
 
@@ -244,7 +233,7 @@ func listenConn(conn *Conn, logger *log.Logger, c chan struct{}) {
 
 // authChain requests the Minecraft auth JWT chain using the credentials passed. If successful, an encoded
 // chain ready to be put in a login request is returned.
-/*func authChain(ctx context.Context, src oauth2.TokenSource, key *ecdsa.PrivateKey) (string, error) {
+func authChain(ctx context.Context, src oauth2.TokenSource, key *ecdsa.PrivateKey) (string, error) {
 	// Obtain the Live token, and using that the XSTS token.
 	liveToken, err := src.Token()
 	if err != nil {
@@ -261,7 +250,7 @@ func listenConn(conn *Conn, logger *log.Logger, c chan struct{}) {
 		return "", fmt.Errorf("error obtaining Minecraft auth chain: %v", err)
 	}
 	return chain, nil
-}*/
+}
 
 // defaultClientData edits the ClientData passed to have defaults set to all fields that were left unchanged.
 func defaultClientData(address, username string, d *login.ClientData) {
@@ -332,7 +321,7 @@ func defaultIdentityData(data *login.IdentityData) {
 		data.Identity = uuid.New().String()
 	}
 	if data.DisplayName == "" {
-		data.DisplayName = "Steve"
+		data.DisplayName = "Steve222"
 	}
 }
 

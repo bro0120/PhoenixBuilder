@@ -27,8 +27,8 @@ const (
 	InputFlagWantDownSlow
 	InputFlagWantUpSlow
 	InputFlagSprinting
-	InputFlagAscendScaffolding
-	InputFlagDescendScaffolding
+	InputFlagAscendBlock
+	InputFlagDescendBlock
 	InputFlagSneakToggleDown
 	InputFlagPersistSneak
 	InputFlagStartSprinting
@@ -65,6 +65,12 @@ const (
 	PlayModeNumModes
 )
 
+const (
+	InteractionModelTouch = iota
+	InteractionModelCrosshair
+	InteractionModelClassic
+)
+
 // PlayerAuthInput is sent by the client to allow for server authoritative movement. It is used to synchronise
 // the player input with the position server-side.
 // The client sends this packet when the ServerAuthoritativeMovementMode field in the StartGame packet is set
@@ -88,6 +94,9 @@ type PlayerAuthInput struct {
 	// PlayMode specifies the way that the player is playing. The values it holds, which are rather random,
 	// may be found above.
 	PlayMode uint32
+	// InteractionModel is a constant representing the interaction model the player is using. It is one of the
+	// constants that may be found above.
+	InteractionModel int32
 	// GazeDirection is the direction in which the player is gazing, when the PlayMode is PlayModeReality: In
 	// other words, when the player is playing in virtual reality.
 	GazeDirection mgl32.Vec3
@@ -120,16 +129,15 @@ func (pk *PlayerAuthInput) Marshal(w *protocol.Writer) {
 	w.Varuint64(&pk.InputData)
 	w.Varuint32(&pk.InputMode)
 	w.Varuint32(&pk.PlayMode)
+	w.Varint32(&pk.InteractionModel)
 	if pk.PlayMode == PlayModeReality {
 		w.Vec3(&pk.GazeDirection)
 	}
 	w.Varuint64(&pk.Tick)
 	w.Vec3(&pk.Delta)
-	unk:=[]byte{0}
-	unkFloat:=float32(0)
-	w.Bytes(&unk)
+
 	if pk.InputData&InputFlagPerformItemInteraction != 0 {
-		protocol.PlayerInventoryAction(w, &pk.ItemInteractionData)
+		w.PlayerInventoryAction(&pk.ItemInteractionData)
 	}
 
 	if pk.InputData&InputFlagPerformItemStackRequest != 0 {
@@ -143,9 +151,6 @@ func (pk *PlayerAuthInput) Marshal(w *protocol.Writer) {
 			protocol.BlockAction(w, &action)
 		}
 	}
-	w.Bytes(&unk)
-	w.Float32(&unkFloat)
-	w.Float32(&unkFloat)
 }
 
 // Unmarshal ...
@@ -158,6 +163,7 @@ func (pk *PlayerAuthInput) Unmarshal(r *protocol.Reader) {
 	r.Varuint64(&pk.InputData)
 	r.Varuint32(&pk.InputMode)
 	r.Varuint32(&pk.PlayMode)
+	r.Varint32(&pk.InteractionModel)
 	if pk.PlayMode == PlayModeReality {
 		r.Vec3(&pk.GazeDirection)
 	}
@@ -165,7 +171,7 @@ func (pk *PlayerAuthInput) Unmarshal(r *protocol.Reader) {
 	r.Vec3(&pk.Delta)
 
 	if pk.InputData&InputFlagPerformItemInteraction != 0 {
-		protocol.PlayerInventoryAction(r, &pk.ItemInteractionData)
+		r.PlayerInventoryAction(&pk.ItemInteractionData)
 	}
 
 	if pk.InputData&InputFlagPerformItemStackRequest != 0 {

@@ -10,6 +10,7 @@ require (
 require (
 	github.com/atomicgo/cursor v0.0.1 // indirect
 	github.com/df-mc/goleveldb v1.1.9 // indirect
+	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/gookit/color v1.4.2 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
@@ -25,9 +26,12 @@ require (
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/mod v0.3.0 // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
-	golang.org/x/tools v0.0.0-20200808161706-5bf02b21f123 // indirect
+	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401 // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/tools v0.0.0-20200825202427-b303f430e36d // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/appengine v1.6.6 // indirect
+	google.golang.org/protobuf v1.25.0 // indirect
 )
 
 replace rogchap.com/v8go v0.7.0 => ./depends/v8go@v0.7.0
@@ -54,8 +58,8 @@ require (
 	go.kuoruan.net/v8go-polyfills v0.5.0
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
-	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d
-	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/text v0.3.7
 	gopkg.in/square/go-jose.v2 v2.6.0
 )

@@ -18,4 +18,6 @@ const (
 	DeviceOrbis
 	DeviceNX
 	DeviceXBOX
+	DeviceWP
+	DeviceLinux
 )

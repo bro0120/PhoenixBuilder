@@ -2,6 +2,8 @@ package packet
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/google/uuid"
+	"phoenixbuilder/minecraft/nbt"
 	"phoenixbuilder/minecraft/protocol"
 )
 
@@ -37,7 +39,7 @@ type StartGame struct {
 	Yaw float32
 	// WorldSeed is the seed used to generate the world. Unlike in PC edition, the seed is a 32bit integer
 	// here.
-	WorldSeed int32
+	WorldSeed uint64
 	// SpawnBiomeType specifies if the biome that the player spawns in is user defined (through behaviour
 	// packs) or builtin. See the constants above.
 	SpawnBiomeType int16
@@ -155,6 +157,8 @@ type StartGame struct {
 	LimitedWorldWidth, LimitedWorldDepth int32
 	// NewNether specifies if the server runs with the new nether introduced in the 1.16 update.
 	NewNether bool
+	// EducationSharedResourceURI is an education edition feature that transmits education resource settings to clients.
+	EducationSharedResourceURI protocol.EducationSharedResourceURI
 	// ForceExperimentalGameplay specifies if experimental gameplay should be force enabled. For servers this
 	// should always be set to false.
 	ForceExperimentalGameplay bool
@@ -192,6 +196,15 @@ type StartGame struct {
 	ServerAuthoritativeInventory bool
 	// GameVersion is the version of the game the server is running. The exact function of this field isn't clear.
 	GameVersion string
+	// PropertyData contains properties that should be applied on the player. These properties are the same as the
+	// ones that are sent in the SyncActorProperty packet.
+	PropertyData map[string]any
+	// ServerBlockStateChecksum is a checksum to ensure block states between the server and client match.
+	// This can simply be left empty, and the client will avoid trying to verify it.
+	ServerBlockStateChecksum uint64
+	// WorldTemplateID is a UUID that identifies the template that was used to generate the world. Servers that do not
+	// use a world based off of a template can set this to an empty UUID.
+	WorldTemplateID uuid.UUID
 }
 
 // ID ...
@@ -207,7 +220,7 @@ func (pk *StartGame) Marshal(w *protocol.Writer) {
 	w.Vec3(&pk.PlayerPosition)
 	w.Float32(&pk.Pitch)
 	w.Float32(&pk.Yaw)
-	w.Varint32(&pk.WorldSeed)
+	w.Uint64(&pk.WorldSeed)
 	w.Int16(&pk.SpawnBiomeType)
 	w.String(&pk.UserDefinedBiomeName)
 	w.Varint32(&pk.Dimension)
@@ -251,6 +264,7 @@ func (pk *StartGame) Marshal(w *protocol.Writer) {
 	w.Int32(&pk.LimitedWorldWidth)
 	w.Int32(&pk.LimitedWorldDepth)
 	w.Bool(&pk.NewNether)
+	protocol.EducationResourceURI(w, &pk.EducationSharedResourceURI)
 	w.Bool(&pk.ForceExperimentalGameplay)
 	if pk.ForceExperimentalGameplay {
 		// This might look wrong, but is in fact correct: Mojang is writing this bool if the same bool above
@@ -279,6 +293,9 @@ func (pk *StartGame) Marshal(w *protocol.Writer) {
 	w.String(&pk.MultiPlayerCorrelationID)
 	w.Bool(&pk.ServerAuthoritativeInventory)
 	w.String(&pk.GameVersion)
+	w.NBT(&pk.PropertyData, nbt.NetworkLittleEndian)
+	w.Uint64(&pk.ServerBlockStateChecksum)
+	w.UUID(&pk.WorldTemplateID)
 }
 
 // Unmarshal ...
@@ -290,7 +307,7 @@ func (pk *StartGame) Unmarshal(r *protocol.Reader) {
 	r.Vec3(&pk.PlayerPosition)
 	r.Float32(&pk.Pitch)
 	r.Float32(&pk.Yaw)
-	r.Varint32(&pk.WorldSeed)
+	r.Uint64(&pk.WorldSeed)
 	r.Int16(&pk.SpawnBiomeType)
 	r.String(&pk.UserDefinedBiomeName)
 	r.Varint32(&pk.Dimension)
@@ -335,6 +352,7 @@ func (pk *StartGame) Unmarshal(r *protocol.Reader) {
 	r.Int32(&pk.LimitedWorldWidth)
 	r.Int32(&pk.LimitedWorldDepth)
 	r.Bool(&pk.NewNether)
+	protocol.EducationResourceURI(r, &pk.EducationSharedResourceURI)
 	r.Bool(&pk.ForceExperimentalGameplay)
 	if pk.ForceExperimentalGameplay {
 		// This might look wrong, but is in fact correct: Mojang is writing this bool if the same bool above
@@ -363,4 +381,7 @@ func (pk *StartGame) Unmarshal(r *protocol.Reader) {
 	r.String(&pk.MultiPlayerCorrelationID)
 	r.Bool(&pk.ServerAuthoritativeInventory)
 	r.String(&pk.GameVersion)
+	r.NBT(&pk.PropertyData, nbt.NetworkLittleEndian)
+	r.Uint64(&pk.ServerBlockStateChecksum)
+	r.UUID(&pk.WorldTemplateID)
 }

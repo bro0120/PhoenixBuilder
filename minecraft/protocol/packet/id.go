@@ -20,7 +20,7 @@ const (
 	IDTakeItemActor
 	IDMoveActorAbsolute
 	IDMovePlayer
-	IDRiderJump
+	IDPassengerJump
 	IDUpdateBlock
 	IDAddPainting
 	IDTickSync
@@ -168,6 +168,23 @@ const (
 	IDSyncActorProperty
 	IDAddVolumeEntity
 	IDRemoveVolumeEntity
-	IDNeteaseJson = 0xCB
-	IDPyRpc = 0xC8
+	IDSimulationType
+	IDNPCDialogue
+	IDEducationResourceURI
+	IDCreatePhoto
+	IDUpdateSubChunkBlocks
+	IDPhotoInfoRequest
+	IDSubChunk
+	IDSubChunkRequest
+	IDClientStartItemCooldown
+	IDScriptMessage
+	IDCodeBuilderSource
+	IDTickingAreasLoadStatus
+	IDDimensionData
+	IDAgentAction
+	IDChangeMobProperty
+	IDLessonProgress
+	IDRequestAbility
+	IDRequestPermissions
+	IDToastRequest
 )

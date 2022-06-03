@@ -37,6 +37,8 @@ type PBEnvironment struct {
 	CertSigning               bool
 	LocalKey                  string
 	LocalCert                 string
+	TargetServer              string
+	IngameResponse            bool
 }
 
 func (env *PBEnvironment) Stop() {

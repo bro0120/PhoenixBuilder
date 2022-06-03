@@ -6,7 +6,6 @@ import (
 	"phoenixbuilder/minecraft/protocol/packet"
 	"github.com/google/uuid"
 	"sync"
-	"fmt"
 )
 
 func (sender *CommandSender) GetBlockUpdateSubscribeMap() *sync.Map {
@@ -38,7 +37,6 @@ func (sender *CommandSender) SendCommand(command string, UUID uuid.UUID) error {
 		CommandLine:   command,
 		CommandOrigin: origin,
 		Internal:      false,
-		UnLimited:     false,
 	}
 	return sender.getConn().WritePacket(commandRequest)
 }
@@ -55,16 +53,17 @@ func (sender *CommandSender) SendWSCommand(command string, UUID uuid.UUID) error
 		CommandLine:   command,
 		CommandOrigin: origin,
 		Internal:      false,
-		UnLimited:     false,
 	}
 	return sender.getConn().WritePacket(commandRequest)
 }
 
 func (sender *CommandSender) SendSizukanaCommand(command string) error {
-	return sender.getConn().WritePacket(&packet.SettingsCommand{
+	return sender.SendWSCommand(command, uuid.New())
+	// The method below seems no longer works.
+	/*return sender.getConn().WritePacket(&packet.SettingsCommand{
 		CommandLine: command,
 		SuppressOutput: true,
-	})
+	})*/
 }
 
 func (sender *CommandSender) SendChat(content string) error {
@@ -76,6 +75,5 @@ func (sender *CommandSender) SendChat(content string) error {
 		SourceName: idd.DisplayName,
 		Message: content,
 		XUID: idd.XUID,
-		PlayerRuntimeID: fmt.Sprintf("%d",conn.GameData().EntityUniqueID),
 	})
 }

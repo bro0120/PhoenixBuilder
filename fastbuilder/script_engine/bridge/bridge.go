@@ -227,7 +227,6 @@ func (hb *HostBridgeBeta) RegPacketCallBack(packetType string, onPacket func(pac
 					Parameters:       nil,
 					XUID:             "",
 					PlatformChatID:   "",
-					PlayerRuntimeID:  "",
 				})
 				time.Sleep(3 * time.Second)
 			}
