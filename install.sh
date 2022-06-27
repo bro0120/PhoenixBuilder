@@ -191,9 +191,11 @@ BINARY_INSTALL="0"
 
 if [[ ${SYSTEM_NAME} == "Linux" ]] && [[ $(uname -o) == "Android" ]]; then
   # We do not provide .deb packages for Android X86 currently
-  if [[ ${ROOT_REQUIRED} == "1" ]] && [[ ${MACHINE} != "x86" ]] && [[ ${MACHINE} != "x86_64" ]] && [[ $(dpkg -L pro.fastbuilder.phoenix-android &> /dev/null; echo $?) -eq 0 ]]; then
-    FB_VER=$(dpkg-query --showformat='${Version}' --show pro.fastbuilder.phoenix-android)
-    printf "\033[32mFound previously installed FastBuilder, Version: ${FB_VER}\033[0m\n"
+  if [[ ${ROOT_REQUIRED} == "1" ]] && [[ ${ARCH} != "x86" ]] && [[ ${ARCH} != "x86_64" ]]; then
+    if [[ $(dpkg -L pro.fastbuilder.phoenix-android &> /dev/null; echo $?) == 0 ]]; then
+      FB_VER=$(dpkg-query --showformat='${Version}' --show pro.fastbuilder.phoenix-android)
+      printf "\033[32mFound previously installed FastBuilder, Version: ${FB_VER}\033[0m\n"
+    fi
     echo "Requesting FastBuilder Phoenix for Android ${ARCH}..."
     FB_PREFIX="pro.fastbuilder.phoenix-android"
     FILE_TYPE=".deb"
@@ -210,9 +212,11 @@ if [[ ${SYSTEM_NAME} == "Linux" ]] && [[ $(uname -o) == "Android" ]]; then
     BINARY_INSTALL="1"
   fi
 elif [ ${MACHINE} == "ios" ]; then
-  if [[ ${ROOT_REQUIRED} == "1" ]] && [[ $(dpkg -L pro.fastbuilder.phoenix &> /dev/null; echo $?) == "0" ]]; then
-    FB_VER=$(dpkg-query --showformat='${Version}' --show pro.fastbuilder.phoenix)
-    printf "\033[32mFound previously installed FastBuilder, Version: ${FB_VER}\033[0m\n"
+  if [[ ${ROOT_REQUIRED} == "1" ]]; then
+    if [[ $(dpkg -L pro.fastbuilder.phoenix &> /dev/null; echo $?) == "0" ]]; then
+      FB_VER=$(dpkg-query --showformat='${Version}' --show pro.fastbuilder.phoenix)
+      printf "\033[32mFound previously installed FastBuilder, Version: ${FB_VER}\033[0m\n"
+    fi
     printf "\033[32mIt is suggested to upgrade FastBuilder from your package manager (Cydia, Sileo, etc.).\033[0m\n"
     printf "\033[32mBut I don't care, proceeding...\033[0m\n"
     echo "Requesting FastBuilder Phoenix for ${ARCH} iOS..."
