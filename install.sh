@@ -134,6 +134,7 @@ echo "Your device and OS: ${SYSTEM_NAME} ${KERNEL_VERSION}, ${ARCH}"
 # Use cURL by default
 echo "Finding downloaders..."
 DL_TOOL=""
+DL_TOOL_NAME=""
 DL_TOOL_OUT_FLAG="-o"
 for i in "curl" "wget" "axel" "aria2c"; do
   which ${i} > /dev/null 2>&1
@@ -147,9 +148,9 @@ done
 if [ ${DL_TOOL} == "" ]; then
   printf "\033[31mInstall curl before using this script!\033[0m\n"
   exit 1
-elif [ ${DL_TOOL} == "wget" ]; then
+elif [ ${DL_TOOL_NAME} == "wget" ]; then
   DL_TOOL_OUT_FLAG="-O"
-elif [ ${DL_TOOL} == "curl" ]; then
+elif [ ${DL_TOOL_NAME} == "curl" ]; then
   DL_TOOL_OUT_FLAG="-fSL -o"
 fi
 
@@ -166,7 +167,7 @@ for i in "ginstall" "install"; do
     break
   fi
 done
-if [ "${INSTALL}" != *install ]; then
+if [ "${INSTALL}" == "" ]; then
   printf "\033[33mThis script prefers to install files by using \033[0m"
   printf "\033[33mGNU/BSD install(1) but you do not have it. Skipping.\033[0m"
   INSTALL="cp -f"
