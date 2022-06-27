@@ -173,7 +173,7 @@ if [ "${INSTALL}" == "" ]; then
   INSTALL="cp -f"
 fi
 
-printf "\033[32mAll basic checks complete! Proceeding the installation...\033[0m"
+printf "\033[32mAll basic checks complete! Proceeding the installation...\033[0m\n"
 
 # FastBuilder Presets
 # You should not change these contents
@@ -191,7 +191,7 @@ BINARY_INSTALL="0"
 
 if [[ ${SYSTEM_NAME} == "Linux" ]] && [[ $(uname -o) == "Android" ]]; then
   # We do not provide .deb packages for Android X86 currently
-  if [[ ${ROOT_REQUIRED} == "1" ]] && [[ ${ARCH} != "x86" ]] && [[ ${ARCH} != "x86_64" ]]; then
+  if [[ ${ROOT_REQUIRED} == "1" ]] && [[ ${ARCH} != "x86" ]] && [[ ${ARCH} != "x86_64" ]] && [[ $(dpkg --version &> /dev/null; echo $?) == 0 ]]; then
     if [[ $(dpkg -L pro.fastbuilder.phoenix-android &> /dev/null; echo $?) == 0 ]]; then
       FB_VER=$(dpkg-query --showformat='${Version}' --show pro.fastbuilder.phoenix-android)
       printf "\033[32mFound previously installed FastBuilder, Version: ${FB_VER}\033[0m\n"
@@ -205,7 +205,8 @@ if [[ ${SYSTEM_NAME} == "Linux" ]] && [[ $(uname -o) == "Android" ]]; then
       FILE_ARCH="arm"
     fi
   else
-    printf "\033[31mFastBuilder does not provide .deb for ${ARCH} Android! Requesting binary executables.\033[0m\n"
+    # Weird error, some Android may not using Termux and then dpkg is something nonexist
+    printf "\033[31mFastBuilder cannot provide .deb for your ${ARCH} Android! Requesting binary executables.\033[0m\n"
     FB_PREFIX="phoenixbuilder-android-executable-"
     FILE_TYPE=""
     FILE_ARCH="${ARCH}"
