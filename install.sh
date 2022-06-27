@@ -9,7 +9,7 @@
 # <support at boul dot dev>
 
 # Planned support: macOS, iOS, Android, Linux (Debian, Ubuntu)
-
+set -e -x
 #=============================================================#
 
 # Define functions to properly exit
@@ -76,7 +76,13 @@ KERNEL_VERSION=$(uname -r)
 # is that they may return unexpected values.
 # e.g. "uname -m" returns device model name when on iOS
 arch_format() {
-  ARCH=$(arch)
+  which arch > /dev/null 2>&1
+  if [ $? == 0 ]; then
+    ARCH=$(arch)
+  else
+    ARCH=$(uname -m)
+  fi
+
   if [ $(echo ${ARCH} | grep -E "armv8|aarch64" &> /dev/null; echo $?) == 0 ]; then
     ARCH="arm64"
   elif [ $(echo ${ARCH} | grep -E "x64|amd64" &> /dev/null; echo $?) == 0 ]; then
@@ -143,6 +149,8 @@ if [ ${DL_TOOL} == "" ]; then
   exit 1
 elif [ ${DL_TOOL} == "wget" ]; then
   DL_TOOL_OUT_FLAG="-O"
+elif [ ${DL_TOOL} == "curl" ]; then
+  DL_TOOL_OUT_FLAG="-fSL -o"
 fi
 
 # Check if "install" command exists
@@ -261,11 +269,12 @@ fi
 
 rm -rf "${PREFIX}"/./fastbuilder-temp "${BINDIR}"/./fastbuilder
 mkdir -p "${PREFIX}"/./fastbuilder-temp
+LAUNCH_CMD=""
 if [[ ${BINARY_INSTALL} == "1" ]]; then
   # Repeat FB_LINK
   FB_LINK="${FB_DOMAIN}${FB_LOCATION_ROOT}${FB_PREFIX}${FILE_ARCH}${FILE_TYPE}${FILE_ARCH}"
   printf "Downloading FastBuilder binary..."
-  ${DL_TOOL} ${DL_TOOL_OUT_FLAG} "${PREFIX}"/./fastbuilder-temp/fastbuilder "${FB_LINK}"
+  ${DL_TOOL} ${DL_TOOL_OUT_FLAG} "${PREFIX}/./fastbuilder-temp/fastbuilder" "${FB_LINK}"
   if [ $? == 0 ]; then
     printf "\033[32mSuccessfully downloaded FastBuilder\033[0m"
     if [ ${MACHINE} == "macos" ]; then
@@ -281,8 +290,10 @@ if [[ ${BINARY_INSTALL} == "1" ]]; then
   fi
   if [ ${ROOT_REQUIRED} == "1" ]; then
     ${INSTALL} "${PREFIX}"/./fastbuilder-temp/fastbuilder ${BINDIR}
+    LAUNCH_CMD="fastbuilder"
   else
     ${INSTALL} "${PREFIX}"/./fastbuilder-temp/fastbuilder "${PREFIX}"/
+    LAUNCH_CMD="${PREFIX}/fastbuilder"
   fi
 else
   # Download a file contains the latest version num for FastBuilder distros
@@ -299,10 +310,62 @@ else
   # Repeat FB_LINK
   FB_LINK="${FB_DOMAIN}${FB_LOCATION_ROOT}${FB_PREFIX}_${FB_VER}_${FILE_ARCH}${FILE_TYPE}"
   ${DL_TOOL} ${DL_TOOL_OUT_FLAG} "${PREFIX}"/./fastbuilder-temp/fastbuilder.deb ${FB_LINK}
-  if [ $? == 0 ]; then
+  DL_RET=$?
+  if [ ${DL_RET} == 0 ]; then
     printf "\033[32mSuccessfully downloaded FastBuilder\033[0m\n"
+  elif [ ${DL_TOOL} == "curl" ]; then
+    if [ ${DL_RET} == 22 ]; then
+      printf "\033[031Download failure! Requested resources not exist! (curl: 22)\033[0m\n"
+      printf "\033[031 ${FB_LINK}\033[0m\n"
+    elif [ ${DL_RET} == 3 ]; then
+      printf "\033[031URL malformed. (curl: 3)\033[0m\n"
+      printf "\033[031Please report this bug!\033[0m\n"
+    elif [ ${DL_RET} == 23 ]; then
+      printf "\033[031Could not write data to local filesystem! (curl: 23)\033[0m\n"
+      printf "\033[031Check your r/w permissions before the installation.\033[0m\n"
+    else
+      printf "\033[031Download failure! Please check your connections (curl: ${DL_RET}).\nStopping.\033[0m\n"
+    fi
+    quit_installer 1
+  elif [ ${DL_TOOL} == "wget" ]; then
+    if [ ${DL_RET} == 1 ]; then
+      printf "\033[031Generic error (wget: 1)\nTry using curl?\033[0m\n"
+    elif [ ${DL_RET} == 2 ]; then
+      printf "\033[031Parse error, check your .wgetrc and .netrc (wget: 2)\033[0m\n"
+    elif [ ${DL_RET} == 3 ]; then
+      printf "\033[031File I/O error (wget: 3)\033[0m\n"
+      printf "\033[031Check your r/w permissions before the installation.\033[0m\n"
+    elif [ ${DL_RET} == 8 ]; then
+      printf "\033[031Download failure! Requested resources not exist! (wget: 8)\033[0m\n"
+      printf "\033[031 ${FB_LINK}\033[0m\n"
+    else
+      printf "\033[031Download failure! Please check your connections (wget: ${DL_RET}).\nStopping.\033[0m\n"
+    fi
+    quit_installer 1
+  elif [ ${DL_TOOL} == "aria2c" ]; then
+    if [ ${DL_RET} == 1 ]; then
+      printf "\033[031Unknown error occurred (aria2c: 1)\nTry using curl?\033[0m\n"
+    elif [ ${DL_RET} == 3 ]; then
+      printf "\033[031Download failure! Requested resources not exist! (aria2c: 3)\033[0m\n"
+      printf "\033[031 ${FB_LINK}\033[0m\n"
+    elif [ ${DL_RET} == 9 ]; then
+      printf "\033[031Disk space not enough. (aria2c: 9)\nCleanup spaces before the installation!\033[0m\n"
+    elif [[ ${DL_RET} == 15 ]] || [[ ${DL_RET} == 16 ]] || [[ ${DL_RET} == 17 ]] || [[ ${DL_RET} == 18 ]]; then
+      printf "\033[031Could not open/create file or directory (aria2c: ${DL_RET})\033[0m\n"
+      printf "\033[031Check your r/w permissions before the installation.\033[0m\n"
+    else
+      printf "\033[031Download failure! Please check your connections (aria2c: ${DL_RET}).\nStopping.\033[0m\n"
+    fi
+    quit_installer 1
+  elif [ ${DL_TOOL} == "axel" ]; then
+    if [ ${DL_RET} == 1 ]; then
+      printf "\033[031Something went wrong (axel: 1)\nTry using curl?\033[0m\n"
+    else
+      printf "\033[031Download failure! Please check your connections (axel: ${DL_RET}).\nStopping.\033[0m\n"
+    fi
+    quit_installer 1
   else
-    printf "\033[031Download failure! Please check your connections.\nStopping.\033[0m\n"
+    printf "\033[031Download failure! (${DL_TOOL}: ${DL_RET}).\nStopping.\033[0m\n"
     quit_installer 1
   fi
   # When installer.sh have root priviledges, it will install packages directly through dpkg
@@ -313,12 +376,15 @@ else
       printf "\033[31mSome errors occured when calling Debian Packager.\nYou may want to run \"dpkg --configure -a\" to fix some problems.\033[0m\n"
       quit_installer 1
     fi
+    LAUNCH_CMD="fastbuilder"
   else
     mv "${PREFIX}"/./fastbuilder-temp/fastbuilder.deb "${PREFIX}"/./fastbuilder.deb
     printf "\033[32mUnprevileged, A deb file has been downloaded at %s/fastbuilder.deb\033[0m\n" "${PREFIX}"
+    printf "\033[32mManually install it by \"dpkg -i %s/fastbuilder.deb\"" "${PREFIX}\033[0m\n"
+    quit_installer 0
   fi
 fi
 
 # Yay, everything done!
-printf "\033[32mFastBuilder has been successfully installed on your device!\nUse command \"fastbuilder\" to launch it.\033[0m\n"
+printf "\033[32mFastBuilder has been successfully installed on your device!\nUse command \"%s\" to launch it.\033[0m\n" "${LAUNCH_CMD}"
 quit_installer 0
