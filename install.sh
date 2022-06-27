@@ -9,7 +9,6 @@
 # <support at boul dot dev>
 
 # Planned support: macOS, iOS, Android, Linux (Debian, Ubuntu)
-set -e -x
 #=============================================================#
 
 # Define functions to properly exit
@@ -141,6 +140,7 @@ for i in "curl" "wget" "axel" "aria2c"; do
   if [ $? == 0 ]; then
     echo "Found ${i}: $(which ${i})"
     DL_TOOL=$(which ${i})
+    DL_TOOL_NAME="${i}"
     break
   fi
 done
@@ -166,7 +166,7 @@ for i in "ginstall" "install"; do
     break
   fi
 done
-if [ "${INSTALL}" == "" ]; then
+if [ "${INSTALL}" != *install ]; then
   printf "\033[33mThis script prefers to install files by using \033[0m"
   printf "\033[33mGNU/BSD install(1) but you do not have it. Skipping.\033[0m"
   INSTALL="cp -f"
@@ -288,6 +288,8 @@ if [[ ${BINARY_INSTALL} == "1" ]]; then
     printf "\033[31mDownload failure! Please check your connection.\nStopping.\033[0m\n"
     quit_installer 1
   fi
+  # Explictly perform chmod
+  chmod +x "${PREFIX}"/./fastbuilder-temp/fastbuilder
   if [ ${ROOT_REQUIRED} == "1" ]; then
     ${INSTALL} "${PREFIX}"/./fastbuilder-temp/fastbuilder ${BINDIR}
     LAUNCH_CMD="fastbuilder"
@@ -313,7 +315,7 @@ else
   DL_RET=$?
   if [ ${DL_RET} == 0 ]; then
     printf "\033[32mSuccessfully downloaded FastBuilder\033[0m\n"
-  elif [ ${DL_TOOL} == "curl" ]; then
+  elif [ ${DL_TOOL_NAME} == "curl" ]; then
     if [ ${DL_RET} == 22 ]; then
       printf "\033[031Download failure! Requested resources not exist! (curl: 22)\033[0m\n"
       printf "\033[031 ${FB_LINK}\033[0m\n"
@@ -327,7 +329,7 @@ else
       printf "\033[031Download failure! Please check your connections (curl: ${DL_RET}).\nStopping.\033[0m\n"
     fi
     quit_installer 1
-  elif [ ${DL_TOOL} == "wget" ]; then
+  elif [ ${DL_TOOL_NAME} == "wget" ]; then
     if [ ${DL_RET} == 1 ]; then
       printf "\033[031Generic error (wget: 1)\nTry using curl?\033[0m\n"
     elif [ ${DL_RET} == 2 ]; then
@@ -342,7 +344,7 @@ else
       printf "\033[031Download failure! Please check your connections (wget: ${DL_RET}).\nStopping.\033[0m\n"
     fi
     quit_installer 1
-  elif [ ${DL_TOOL} == "aria2c" ]; then
+  elif [ ${DL_TOOL_NAME} == "aria2c" ]; then
     if [ ${DL_RET} == 1 ]; then
       printf "\033[031Unknown error occurred (aria2c: 1)\nTry using curl?\033[0m\n"
     elif [ ${DL_RET} == 3 ]; then
@@ -357,7 +359,7 @@ else
       printf "\033[031Download failure! Please check your connections (aria2c: ${DL_RET}).\nStopping.\033[0m\n"
     fi
     quit_installer 1
-  elif [ ${DL_TOOL} == "axel" ]; then
+  elif [ ${DL_TOOL_NAME} == "axel" ]; then
     if [ ${DL_RET} == 1 ]; then
       printf "\033[031Something went wrong (axel: 1)\nTry using curl?\033[0m\n"
     else
