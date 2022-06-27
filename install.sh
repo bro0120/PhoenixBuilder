@@ -62,10 +62,8 @@ elif [[ $(id -u) == 0 ]]; then
   fi
 else
   printf "\033[31mRoot privilege required!\033[0m\n"
-  printf "\033[31mPlease run this installer using command:\033[0m\n"
-  printf "\033[33m  sudo bash %s\033[0m\n" "${0}"
-  printf "\033[31mOr:\033[0m\n"
-  printf "\033[33m  bash %s local\033[0m\n" "${0}"
+  printf "\033[31mPlease run this installer under root\033[0m\n"
+  printf "\033[31mOr prepend LOCAL=1 before command\033[0m\n"
   printf "\033[31mTo install FastBuilder without root access.\033[0m\n"
   quit_installer 1
 fi
