@@ -109,9 +109,9 @@ MACHINE="$(machine_format)"
 if [ ${SYSTEM_NAME} == "Darwin" ]; then
   which sw_vers > /dev/null 2>&1
   if [ $? == 0 ]; then
-    if [ $(sw_vers -productName) == "macOS" ]; then
+    if [ "$(sw_vers -productName)" == "macOS" ]; then
       MACHINE="macos"
-    elif [ $(sw_vers -productName) == "iPhone OS" ]; then
+    elif [ "$(sw_vers -productName)" == "iPhone OS" ]; then
       MACHINE="ios"
     else
       printf "\033[31mUnknown Darwin Product %s!\033[0m\n" "$(sw_vers -productName)"
