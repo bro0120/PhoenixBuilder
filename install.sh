@@ -44,11 +44,15 @@ else
 fi
 BINDIR="${PREFIX}/bin"
 ROOT_REQUIRED="1"
-if [[ ${1} ]] && [[ ${1} == "local" ]]; then
+if [ ${LOCAL} ]; then
   printf "\033[32mUser required to run install script with non-privileged access\033[0m\n"
   printf "A folder named \"fastbuilder\" will be created under %s\n" "${HOME}"
   PREFIX="${HOME}/fastbuilder"
   ROOT_REQUIRED="0"
+elif [[ $(uname -o) == "Android" ]] && [[ $(apt install &> /dev/null; echo $?) == 0 ]]; then
+  # No need of root on Termux
+  printf "\033[32mRunning under Android Termux (APT does not require root)\033[0m\n"
+  ROOT_REQUIRED="1"
 elif [[ $(id -u) == 0 ]]; then
   if [ ${SUDO_UID} ]; then
     printf "\033[32mRunning under sudo privileges\033[0m\n"
