@@ -137,6 +137,7 @@ jobs:
         ls -lh build/>release.txt
         mv release.txt build/release-list.txt
         cp version build/version.txt
+        cp install.sh build/install.sh
     - name: Generate index files for storage over github
       run: node index_generator.js build
     - name: Deploy to storage
