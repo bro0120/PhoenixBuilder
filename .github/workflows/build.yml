@@ -95,7 +95,7 @@ jobs:
     - name: Download Openwrt SDK
       if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
       run: |
-        wget https://archive.openwrt.org/releases/21.02.2/targets/ramips/mt7620/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64.tar.xz
+        wget -q https://archive.openwrt.org/releases/21.02.2/targets/ramips/mt7620/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64.tar.xz
         tar -xJf openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64.tar.xz
         rm openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64.tar.xz
         mv openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64 ~/
@@ -119,8 +119,7 @@ jobs:
     - name: Build GUI applications
       run: |
         export THEOS=~/theos
-        cd fyne-gui
-        cd android_wrapper
+        cd fyne-gui/android_wrapper
         go build
         cd ..
         make

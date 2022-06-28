@@ -1,4 +1,4 @@
-.PHONY: all current current-v8 current-arm64-executable ios-executable ios-v8-executable ios-lib macos android-executable-armv7 android-executable-arm64 android-executable-x86_64 android-executable-x86 windows-executable windows-executable-x86 windows-executable-x86_64
+.PHONY: all current current-v8 current-arm64-executable ios-executable ios-v8-executable ios-lib macos macos-v8 android-executable-armv7 android-executable-arm64 android-executable-x86_64 android-executable-x86 windows-executable windows-executable-x86 windows-executable-x86_64 openwrt-mt7620-mipsel_24kc
 TARGETS:=build/ current current-v8
 PACKAGETARGETS:=
 ifeq ($(shell uname | grep "Darwin" > /dev/null ; echo $${?}),0)
@@ -22,7 +22,7 @@ LIPO=$${THEOS}/toolchain/linux/iphone/bin/lipo
 IOS_OBJCOPY=$${THEOS}/toolchain/linux/iphone/bin/llvm-objcopy
 endif
 ifneq (${THEOS},)
-	TARGETS:=${TARGETS} ios-executable ios-lib macos ios-v8-executable
+	TARGETS:=${TARGETS} ios-executable ios-lib macos-v8 ios-v8-executable
 	PACKAGETARGETS:=${PACKAGETARGETS} package/ios
 endif
 ifneq ($(wildcard ${HOME}/android-ndk-r20b),)
@@ -38,7 +38,7 @@ endif
 ifneq ($(wildcard /usr/bin/aarch64-linux-gnu-gcc),)
 	TARGETS:=${TARGETS} current-arm64-executable
 endif
-ifneq ($(wildcard `pwd`/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64),)
+ifneq ($(wildcard ${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64),)
 	TARGETS:=${TARGETS} openwrt-mt7620-mipsel_24kc
 endif
 
@@ -56,6 +56,7 @@ ios-executable: build/phoenixbuilder-ios-executable
 ios-v8-executable: build/phoenixbuilder-v8-ios-executable
 ios-lib: build/phoenixbuilder-ios-static.a
 macos: build/phoenixbuilder-macos
+macos-v8: build/phoenixbuilder-v8-macos
 android-executable-armv7: build/phoenixbuilder-android-executable-armv7
 android-executable-arm64: build/phoenixbuilder-android-executable-arm64
 android-v8-executable-64: build/phoenixbuilder-v8-android-executable-arm64
@@ -121,8 +122,8 @@ build/phoenixbuilder-windows-executable-x86.exe: build/ /usr/bin/i686-w64-mingw3
 	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/i686-w64-mingw32-gcc GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86.exe
 build/phoenixbuilder-windows-executable-x86_64.exe: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
 	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86_64.exe
-build/phoenixbuilder-openwrt-mt7620-mipsel_24kc: build/ openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=`pwd`/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-gcc CXX=`pwd`/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-g++ GOARCH=mipsle CGO_ENABLED=1 go build -trimpath -tags no_readline -ldflags "-s -w" -o build/phoenixbuilder-openwrt-mt7620-mipsel_24kc
+build/phoenixbuilder-openwrt-mt7620-mipsel_24kc: build/ ${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/ ${SRCS_GO}
+	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-gcc CXX=${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-g++ GOARCH=mipsle CGO_ENABLED=1 go build -trimpath -tags no_readline -ldflags "-s -w" -o build/phoenixbuilder-openwrt-mt7620-mipsel_24kc
 #build/phoenixbuilder-v8-windows-executable-x86_64.exe: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
 #	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=/usr/bin/x86_64-w64-mingw32-gcc CXX=/usr/bin/x86_64-w64-mingw32-g++ GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-windows-executable-x86_64.exe
 #build/phoenixbuilder-windows-shared.dll: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
