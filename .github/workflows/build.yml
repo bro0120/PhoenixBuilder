@@ -86,6 +86,20 @@ jobs:
     #  run: |
     #    mv $GITHUB_WORKSPACE/macOS-sdks/MacOSX11.0.sdk ~/theos/sdks/MacOSX11.0.sdk
     #    rm -rf $GITHUB_WORKSPACE/macOS-sdks
+    # Debian/Ubuntu provided LLVM only support native targets, using Homebrew prebuilt for all targets
+    - name: Cache LLVM
+      id: cache-llvm
+      uses: actions/cache@v3
+      with:
+        key: llvm-cache
+        path: ~/llvm
+    - name: Download LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      run: |
+        wget -q https://github.com/Torrekie/homebrew-core/releases/download/LLVM-14.0.6/llvm.tar.gz
+        tar xf llvm.tar.gz
+        rm llvm.tar.gz
+        mv llvm/14.0.6 ~/llvm
     - name: Cache Openwrt SDK
       id: cache-openwrt-sdk
       uses: actions/cache@v3
