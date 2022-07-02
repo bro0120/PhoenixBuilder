@@ -96,9 +96,9 @@ jobs:
     - name: Download LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
-        wget -q https://github.com/Torrekie/homebrew-core/releases/download/LLVM-14.0.6/llvm.tar.gz
-        tar xf llvm.tar.gz
-        rm llvm.tar.gz
+        wget -q https://github.com/Torrekie/homebrew-core/releases/download/LLVM-14.0.6/llvm.tar.xz
+        tar xf llvm.tar.xz
+        rm llvm.tar.xz
         mv llvm/14.0.6 ~/llvm
     - name: Cache Openwrt SDK
       id: cache-openwrt-sdk
