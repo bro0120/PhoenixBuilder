@@ -1,4 +1,4 @@
-.PHONY: all current current-v8 current-arm64-executable ios-executable ios-v8-executable ios-lib macos macos-v8 android-executable-armv7 android-executable-arm64 android-executable-x86_64 android-executable-x86 windows-executable windows-executable-x86 windows-executable-x86_64 netbsd-executable netbsd-executable-x86 netbsd-executable-x86_64 netbsd-executable-arm64 openwrt-mt7620-mipsel_24kc
+.PHONY: all current current-v8 current-arm64-executable ios-executable ios-v8-executable ios-lib macos macos-v8 android-executable-armv7 android-executable-arm64 android-executable-x86_64 android-executable-x86 windows-executable windows-executable-x86 windows-executable-x86_64 freebsd-executable freebsd-executable-x86 freebsd-executable-x86_64 freebsd-executable-arm64 netbsd-executable netbsd-executable-x86 netbsd-executable-x86_64 netbsd-executable-arm64 openwrt-mt7620-mipsel_24kc
 TARGETS:=build/ current current-v8
 PACKAGETARGETS:=
 ifeq ($(shell uname | grep "Darwin" > /dev/null ; echo $${?}),0)
@@ -77,6 +77,14 @@ android-executable-x86: build/phoenixbuilder-android-executable-x86
 windows-executable: windows-executable-x86 windows-executable-x86_64
 windows-executable-x86: build/phoenixbuilder-windows-executable-x86.exe
 windows-executable-x86_64: build/phoenixbuilder-windows-executable-x86_64.exe
+freebsd-executable: freebsd-executable-x86 freebsd-executable-x86_64 freebsd-executable-arm64
+freebsd-executable-x86: build/phoenixbuilder-freebsd-executable-x86
+freebsd-executable-x86_64: build/phoenixbuilder-freebsd-executable-x86_64
+freebsd-executable-arm64: build/phoenixbuilder-freebsd-executable-arm64
+#freebsd-executable-armv6: build/phoenixbuilder-freebsd-executable-armv6
+#freebsd-executable-armv7: build/phoenixbuilder-freebsd-executable-armv7
+# RISC-V targets will be supported in future Go releases (Or use patched versions)
+#freebsd-executable-riscv64: build/phoenixbuilder-freebsd-executable-riscv64
 netbsd-executable: netbsd-executable-x86 netbsd-executable-x86_64 netbsd-executable-arm64
 netbsd-executable-x86: build/phoenixbuilder-netbsd-executable-x86
 netbsd-executable-x86_64: build/phoenixbuilder-netbsd-executable-x86_64
@@ -140,6 +148,12 @@ build/phoenixbuilder-windows-executable-x86.exe: build/ /usr/bin/i686-w64-mingw3
 	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/i686-w64-mingw32-gcc GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86.exe
 build/phoenixbuilder-windows-executable-x86_64.exe: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
 	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86_64.exe
+build/phoenixbuilder-freebsd-executable-x86:
+	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/i386/lib -Ldepends/buildroot/freebsd/i386/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target i686-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86
+build/phoenixbuilder-freebsd-executable-x86_64:
+	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/amd64/lib -Ldepends/buildroot/freebsd/amd64/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target amd64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/amd64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86_64
+build/phoenixbuilder-freebsd-executable-arm64:
+	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/arm64/lib -Ldepends/buildroot/freebsd/arm64/usr/lib -Wl,-rpath,/usr/local/lib" ALT_CLANG="${HOME}/llvm/bin/clang" CC="`pwd`/depends/buildroot/freebsd/arm64/usr/bin/aarch64-unknown-freebsd13-clang -target aarch64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/arm64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=arm64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-arm64
 build/phoenixbuilder-netbsd-executable-x86:
 	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/i386/lib -Ldepends/buildroot/netbsd/i386/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target i386--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=netbsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-x86
 build/phoenixbuilder-netbsd-executable-x86_64:
