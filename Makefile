@@ -30,7 +30,7 @@ endif
 ### *-----------------------------------* ###
 
 ifneq (${THEOS},)
-	TARGETS:=${TARGETS} ios-executable ios-lib macos-v8 ios-v8-executable
+	TARGETS:=${TARGETS} ios-executable ios-lib ios-v8-executable macos-v8
 	PACKAGETARGETS:=${PACKAGETARGETS} package/ios
 endif
 ifneq ($(wildcard ${HOME}/android-ndk-r20b),)
@@ -50,7 +50,7 @@ ifneq ($(wildcard ${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux
 	TARGETS:=${TARGETS} openwrt-mt7620-mipsel_24kc
 endif
 ifneq ($(wildcard ${HOME}/llvm),)
-        TARGETS:=${TARGETS} netbsd-executable
+	TARGETS:=${TARGETS} netbsd-executable
 	# Do other BSDs later
 endif
 
@@ -62,6 +62,7 @@ CGO_DEF := "-DFB_VERSION=\"$(VERSION)\" -DFB_COMMIT=\"$(shell git log -1 --forma
 
 all: ${TARGETS} build/hashes.json
 current: build/phoenixbuilder
+current-debug: build/phoenixbuilder-debug
 current-v8: build/phoenixbuilder-v8
 current-arm64-executable: build/phoenixbuilder-aarch64
 ios-executable: build/phoenixbuilder-ios-executable
@@ -101,7 +102,9 @@ release/:
 build/:
 	mkdir build
 build/phoenixbuilder: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CGO_ENABLED=1  go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_ENABLED=1  go build -trimpath -ldflags "-s -w" -o $@
+build/phoenixbuilder-debug: build/ ${SRCS_GO}
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_ENABLED=1  go build -o $@
 build/phoenixbuilder-v8: build/ ${SRCS_GO}
 	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CGO_ENABLED=1  go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8
 build/libexternal_functions_provider.so: build/ io/external_functions_provider/provider.c
@@ -109,13 +112,13 @@ build/libexternal_functions_provider.so: build/ io/external_functions_provider/p
 build/phoenixbuilder-static.a: build/ build/libexternal_functions_provider.so ${SRCS_GO}
 	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Lbuild -lexternal_functions_provider" CGO_ENABLED=1  go build -trimpath -buildmode=c-archive -ldflags "-s -w" -tags no_readline,is_tweak -o build/phoenixbuilder-static.a
 build/phoenixbuilder-aarch64: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/aarch64-linux-gnu-gcc CGO_ENABLED=1 GOARCH=arm64 go build -tags no_readline -trimpath -ldflags "-s -w" -o build/phoenixbuilder-aarch64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/aarch64-linux-gnu-gcc CGO_ENABLED=1 GOARCH=arm64 go build -tags no_readline -trimpath -ldflags "-s -w" -o build/phoenixbuilder-aarch64
 build/phoenixbuilder-ios-executable: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/ios.sh CXX=`pwd`/archs/ios.sh CGO_ENABLED=1 GOOS=ios GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-ios-executable
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/ios.sh CXX=`pwd`/archs/ios.sh CGO_ENABLED=1 GOOS=ios GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-ios-executable
 	${IOS_STRIP} build/phoenixbuilder-ios-executable
 	${LDID} -Sios-ent.xml build/phoenixbuilder-ios-executable
 build/phoenixbuilder-v8-ios-executable: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/ios.sh CXX=`pwd`/archs/ios.sh CGO_ENABLED=1 GOOS=ios GOARCH=arm64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-ios-executable
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/ios.sh CXX=`pwd`/archs/ios.sh CGO_ENABLED=1 GOOS=ios GOARCH=arm64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-ios-executable
 	${IOS_STRIP} build/phoenixbuilder-v8-ios-executable
 	${LDID} -Sios-ent.xml build/phoenixbuilder-v8-ios-executable
 build/libexternal_functions_provider.dylib: build/ io/external_functions_provider/provider.c
@@ -123,51 +126,51 @@ build/libexternal_functions_provider.dylib: build/ io/external_functions_provide
 build/phoenixbuilder-ios-static.a: build/ build/libexternal_functions_provider.dylib ${SRCS_GO}
 	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Lbuild -lexternal_functions_provider" CC=`pwd`/archs/ios.sh CGO_ENABLED=1 GOOS=ios GOARCH=arm64 go build -buildmode=c-archive -trimpath -ldflags "-s -w -extar ${THEOS}/toolchain/linux/iphone/bin/ar" -tags is_tweak,no_readline -o build/phoenixbuilder-ios-static.a
 build/phoenixbuilder-macos-x86_64: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-macos-x86_64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-macos-x86_64
 build/phoenixbuilder-macos-arm64: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-macos-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-macos-arm64
 build/phoenixbuilder-macos: build/ build/phoenixbuilder-macos-x86_64 build/phoenixbuilder-macos-arm64 ${SRCS_GO}
-	${LIPO} -create build/phoenixbuilder-macos-x86_64 build/phoenixbuilder-macos-arm64 -output build/phoenixbuilder-macos
+	GODEBUG=madvdontneed=1 ${LIPO} -create build/phoenixbuilder-macos-x86_64 build/phoenixbuilder-macos-arm64 -output build/phoenixbuilder-macos
 build/phoenixbuilder-v8-macos-x86_64: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/macos.sh CXX=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-macos-x86_64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/macos.sh CXX=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-macos-x86_64
 build/phoenixbuilder-v8-macos-arm64: build/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/macos.sh CXX=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-macos-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=`pwd`/archs/macos.sh CXX=`pwd`/archs/macos.sh CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-macos-arm64
 build/phoenixbuilder-v8-macos: build/ build/phoenixbuilder-v8-macos-x86_64 build/phoenixbuilder-v8-macos-arm64 ${SRCS_GO}
-	${LIPO} -create build/phoenixbuilder-v8-macos-x86_64 build/phoenixbuilder-v8-macos-arm64 -output build/phoenixbuilder-v8-macos
+	GODEBUG=madvdontneed=1 ${LIPO} -create build/phoenixbuilder-v8-macos-x86_64 build/phoenixbuilder-v8-macos-arm64 -output build/phoenixbuilder-v8-macos
 build/phoenixbuilder-android-executable-armv7: build/ ${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi16-clang ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi16-clang GOOS=android GOARCH=arm CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-armv7
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi16-clang GOOS=android GOARCH=arm CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-armv7
 build/phoenixbuilder-v8-android-executable-arm64: build/ ${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang CXX=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ GOOS=android GOARCH=arm64 CGO_ENABLED=1 go build -tags with_v8 -trimpath -ldflags "-s -w -extldflags -static-libstdc++" -o build/phoenixbuilder-v8-android-executable-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang CXX=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ GOOS=android GOARCH=arm64 CGO_ENABLED=1 go build -tags with_v8 -trimpath -ldflags "-s -w -extldflags -static-libstdc++" -o build/phoenixbuilder-v8-android-executable-arm64
 build/phoenixbuilder-android-executable-arm64: build/ ${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang CXX=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ GOOS=android GOARCH=arm64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w -extldflags -static-libstdc++" -o build/phoenixbuilder-android-executable-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang CXX=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ GOOS=android GOARCH=arm64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w -extldflags -static-libstdc++" -o build/phoenixbuilder-android-executable-arm64
 build/phoenixbuilder-android-executable-x86: build/ ${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android21-clang ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android21-clang GOOS=android GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-x86
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android21-clang GOOS=android GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-x86
 build/phoenixbuilder-android-executable-x86_64: build/ ${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android21-clang ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android21-clang GOOS=android GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-x86_64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=${HOME}/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android21-clang GOOS=android GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-android-executable-x86_64
 build/phoenixbuilder-windows-executable-x86.exe: build/ /usr/bin/i686-w64-mingw32-gcc ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/i686-w64-mingw32-gcc GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86.exe
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/i686-w64-mingw32-gcc GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86.exe
 build/phoenixbuilder-windows-executable-x86_64.exe: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86_64.exe
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=/usr/bin/x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-windows-executable-x86_64.exe
 build/phoenixbuilder-freebsd-executable-x86:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/i386/lib -Ldepends/buildroot/freebsd/i386/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target i686-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/i386/lib -Ldepends/buildroot/freebsd/i386/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target i686-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86
 build/phoenixbuilder-freebsd-executable-x86_64:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/amd64/lib -Ldepends/buildroot/freebsd/amd64/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target amd64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/amd64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86_64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/amd64/lib -Ldepends/buildroot/freebsd/amd64/usr/lib -Wl,-rpath,/usr/local/lib" CC="${HOME}/llvm/bin/clang -target amd64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/amd64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=amd64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-x86_64
 build/phoenixbuilder-freebsd-executable-arm64:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/arm64/lib -Ldepends/buildroot/freebsd/arm64/usr/lib -Wl,-rpath,/usr/local/lib" ALT_CLANG="${HOME}/llvm/bin/clang" CC="`pwd`/depends/buildroot/freebsd/arm64/usr/bin/aarch64-unknown-freebsd13-clang -target aarch64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/arm64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=arm64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/freebsd/arm64/lib -Ldepends/buildroot/freebsd/arm64/usr/lib -Wl,-rpath,/usr/local/lib" ALT_CLANG="${HOME}/llvm/bin/clang" CC="`pwd`/depends/buildroot/freebsd/arm64/usr/bin/aarch64-unknown-freebsd13-clang -target aarch64-unknown-freebsd --sysroot=`pwd`/depends/buildroot/freebsd/arm64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=freebsd GOARCH=arm64 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-freebsd-executable-arm64
 build/phoenixbuilder-netbsd-executable-x86:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/i386/lib -Ldepends/buildroot/netbsd/i386/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target i386--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=netbsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-x86
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/i386/lib -Ldepends/buildroot/netbsd/i386/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target i386--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/i386 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" GOOS=netbsd GOARCH=386 CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-x86
 build/phoenixbuilder-netbsd-executable-x86_64:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/amd64/lib -Ldepends/buildroot/netbsd/amd64/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target amd64--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/amd64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-x86_64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/amd64/lib -Ldepends/buildroot/netbsd/amd64/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target amd64--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/amd64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-x86_64
 # ld.lld: error: unknown emulation: armelf_nbsd
 # We need alternative ld for arm
 #build/phoenixbuilder-netbsd-executable-armv6:
-#	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/armv6/lib -Ldepends/buildroot/netbsd/armv6/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target armv6--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/armv6 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm GOARM=6 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-armv6
+#	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/armv6/lib -Ldepends/buildroot/netbsd/armv6/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target armv6--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/armv6 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm GOARM=6 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-armv6
 #build/phoenixbuilder-netbsd-executable-armv7:
-#	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/armv7/lib -Ldepends/buildroot/netbsd/armv7/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target armv7--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/armv7 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-armv7
+#	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/armv7/lib -Ldepends/buildroot/netbsd/armv7/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target armv7--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/armv7 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-armv7
 build/phoenixbuilder-netbsd-executable-arm64:
-	CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/arm64/lib -Ldepends/buildroot/netbsd/arm64/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target aarch64--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/arm64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-arm64
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CGO_LDFLAGS="-Ldepends/buildroot/netbsd/arm64/lib -Ldepends/buildroot/netbsd/arm64/usr/lib -Wl,-rpath,/usr/pkg/lib" CC="${HOME}/llvm/bin/clang -target aarch64--netbsd --sysroot=`pwd`/depends/buildroot/netbsd/arm64 -fuse-ld=${HOME}/llvm/bin/ld.lld -Wno-unused-command-line-argument" CGO_ENABLED=1 GOOS=netbsd GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/phoenixbuilder-netbsd-executable-arm64
 build/phoenixbuilder-openwrt-mt7620-mipsel_24kc: build/ ${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/ ${SRCS_GO}
-	CGO_CFLAGS=${CGO_DEF} CC=${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-gcc CXX=${HOME}/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-g++ GOARCH=mipsle CGO_ENABLED=1 go build -trimpath -tags no_readline -ldflags "-s -w" -o build/phoenixbuilder-openwrt-mt7620-mipsel_24kc
+	GODEBUG=madvdontneed=1 CGO_CFLAGS=${CGO_DEF} CC=`pwd`/sdks/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-gcc CXX=`pwd`/sdks/openwrt-sdk-21.02.2-ramips-mt7620_gcc-8.4.0_musl.Linux-x86_64/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin/mipsel-openwrt-linux-g++ GOARCH=mipsle CGO_ENABLED=1 go build -trimpath -tags no_readline -ldflags "-s -w" -o build/phoenixbuilder-openwrt-mt7620-mipsel_24kc
 #build/phoenixbuilder-v8-windows-executable-x86_64.exe: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
 #	CGO_CFLAGS=${CGO_DEF}" -DWITH_V8" CC=/usr/bin/x86_64-w64-mingw32-gcc CXX=/usr/bin/x86_64-w64-mingw32-g++ GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -tags with_v8 -trimpath -ldflags "-s -w" -o build/phoenixbuilder-v8-windows-executable-x86_64.exe
 #build/phoenixbuilder-windows-shared.dll: build/ /usr/bin/x86_64-w64-mingw32-gcc ${SRCS_GO}
