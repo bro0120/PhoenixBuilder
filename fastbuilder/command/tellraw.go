@@ -5,10 +5,10 @@ import (
 	"phoenixbuilder/bridge/bridge_fmt"
 	"phoenixbuilder/fastbuilder/types"
 	"phoenixbuilder/fastbuilder/args"
-	"time"
+//	"time"
 	//"github.com/google/uuid"
 	"encoding/json"
-	"strings"
+//	"strings"
 )
 
 type TellrawItem struct {
@@ -20,11 +20,11 @@ type TellrawStruct struct {
 }
 
 func TellRawRequest(target types.Target, lines ...string) string {
-	now := time.Now().Format("§6{15:04:05}§b")
+//	now := time.Now().Format("§6{15:04:05}§b")
 	var items []TellrawItem
-	for _, text := range lines {
-		items=append(items,TellrawItem{Text:msg})
-	}
+//	for _, text := range lines {
+//		items=append(items,TellrawItem{Text:msg})
+//	}
 	final := &TellrawStruct {
 		RawText: items,
 	}
