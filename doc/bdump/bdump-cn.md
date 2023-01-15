@@ -71,7 +71,7 @@ BDump v3 文件的后缀名为`.bdx`，且文件头为`BD@`, 代表本bdump文�
 | 2                 | **已弃用且已移除**                          | - | - |
 | 3                 | **已弃用且已移除**                          | - | - |
 | 4                 | **已弃用且已移除**                          | - | - |
-| 5                 | **已弃用且已移除**                          | - | - |
+| 5                 | `PlaceBlockWithBlockStates`                               | Place a block on the current brush position using the ID of the string indicating the block's name returned by  `CreateConstantString` command and the ID of the `BlockStates` constant string indicating the block states field for placing the block with `setblock` command in Minecraft. <br/>An example of `blockStates` is `["color":"orange"]` | `unsigned short blockConstantStringID`<br/>`unsigned short blockStatesConstantStringID` |
 | 6                 | `AddInt16ZValue0`                          | 将画笔的 `Z` 坐标增加 `value` | `unsigned short value` |
 | 7                 | `PlaceBlock`                               | 在画笔所在位置放置一个方块。同时指定欲放置的方块的 `数据值(附加值)` 为 `blockData` ，且该方块在方块池中的 `ID` 为 `blockConstantStringID` | `unsigned short blockConstantStringID`<br/>`unsigned short blockData` |
 | 8                 | `AddZValue0`                               | 将画笔的 `Z` 坐标增加 `1` | - |
@@ -79,7 +79,7 @@ BDump v3 文件的后缀名为`.bdx`，且文件头为`BD@`, 代表本bdump文�
 | 10, `0x0A`        | **已弃用且已移除**                          | - | - |
 | 11, `0x0B`        | **已弃用且已移除**                          | - | - |
 | 12, `0x0C`        | `AddInt32ZValue0`                          | 将画笔的 `Z` 坐标增加 `value` | `unsigned int value` |
-| 13, `0x0D`        | `PlaceBlockWithBlockStates`                | 在画笔所在位置放置一个方块。同时指定欲放置的方块的 `方块状态` 为 `blockStatesString` ，且该方块在方块池中的 `ID` 为 `blockConstantStringID`<br/> `方块状态` 的格式形如 `["color":"orange"]` | `unsigned short blockConstantStringID`<br/>`char *blockStatesString` |
+| 13, `0x0D`        | `PlaceBlockWithBlockStatesDeprecated`                | 在画笔所在位置放置一个方块。同时指定欲放置的方块的 `方块状态` 为 `blockStatesString` ，且该方块在方块池中的 `ID` 为 `blockConstantStringID`<br/> `方块状态` 的格式形如 `["color":"orange"]` | `unsigned short blockConstantStringID`<br/>`char *blockStatesString` |
 | 14, `0x0E`        | `AddXValue`                                | 将画笔的 `X` 坐标增加 `1` | - |
 | 15, `0x0F`        | `SubtractXValue`                           | 将画笔的 `X` 坐标减少 `1` | - |
 | 16, `0x10`        | `AddYValue`                                | 将画笔的 `Y` 坐标增加 `1` | - |
